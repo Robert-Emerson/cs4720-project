@@ -1,9 +1,16 @@
 <?php
 require 'flight/Flight.php';
 
+Flight::route('/@name', function($id) {
+    echo "Hello $name";
+});
+
+Flight::route('/users/@id', function($id) {
+  echo "You have logged in as $id";
+});
+
 Flight::route('/', function(){
-    echo '<h1> CS4720 - Project page! </h1>';
-    echo '<hr>Sarah Clifton, Robert Emerson, Chet Gray';
+    echo 'hello world!';
 });
 
 Flight::start();
