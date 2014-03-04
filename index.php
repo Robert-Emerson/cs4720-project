@@ -45,6 +45,8 @@ function get_pictures($lat, $lon) {
         'lat'           => $lat,
         'lon'           => $lon,
         'format'        => 'json',
+	'sort'		=> 'date-posted-desc',
+	'radius'	=> '2',
         'nojsoncallback'=> '1'
     );
     $encoded_params = array();
@@ -75,7 +77,7 @@ function get_pictures($lat, $lon) {
     if ($pictures['stat'] == 'fail') {
         echo 'well, that failed';
     } else {
-        foreach (range(0, 10) as $number) { //choosing 10 pictures now.
+        foreach (range(0, 9) as $number) { //choosing 10 pictures now.
             $rand = rand(0, count($picture_list)-1);
 
 	    # adds location data to each chosen image
@@ -97,16 +99,16 @@ function insert_game($pictures, $lat, $lon) {
 	$stmt = $db_connection->stmt_init();
 	if($stmt->prepare("select count(*) from games")) {
 		$stmt->execute();
-		$stmt->bind_result("i", $gameID);
+		$stmt->bind_result( $gameID);
 		$stmt->fetch();
 	}
 	
 	$gameID = $gameID + 1;
-	
+	echo "$gameID <br>";	
     foreach ($pictures as $key => $value) {
 		$id = $value['id'];
 		$pictureLat = $value['location']['lat'];
-		$picutreLon = $value['location']['lon'];
+		$pictureLon = $value['location']['lon'];
 		$url = "http://farm".$value['farm'].".staticflickr.com/".$value['server']."/".$id."_".$value['secret'].".jpg";
 		
 		$db_connection = new mysqli('stardock.cs.virginia.edu', 'cs4720roe2pj', 'spring2014', 'cs4720roe2pj');
@@ -114,7 +116,7 @@ function insert_game($pictures, $lat, $lon) {
 			echo "error connecting to database";
 		}
 		$stmt = $db_connection->stmt_init();
-		if($stmt->prepare("insert into pictures (gameID, photoID, lat, lon, url) values (?, ?, ?, ?, ?)")) {
+		if($stmt->prepare("insert into pictures (`gameID`, `photoID`, `lat`, `lon`, `url`) values (?, ?, ?, ?, ?)")) {
 			$stmt->bind_param("issss", $gameID, $id, $pictureLat, $pictureLon, $url);
 			$stmt->execute();
 		}
@@ -127,8 +129,8 @@ function insert_game($pictures, $lat, $lon) {
 		echo "error connecting to database";
 	}
 	$stmt = $db_connection->stmt_init();
-	if($stmt->prepare("insert into games (gameID, lat, lon) values (?, ?, ?)")) {
-		$stmt->bind_param("iss", $gameNum, $lat, $lon);
+	if($stmt->prepare("insert into games (`gameID`, `lat`, `lon`) values (?, ?, ?)")) {
+		$stmt->bind_param("iss", $gameID, $lat, $lon);
 		$stmt->execute();
 	}	
 
