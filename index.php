@@ -46,7 +46,7 @@ function get_pictures($lat, $lon) {
         'lon'           => $lon,
         'format'        => 'json',
 	'sort'		=> 'date-posted-desc',
-	'radius'	=> '2',
+	'radius'	=> '1',
         'nojsoncallback'=> '1'
     );
     $encoded_params = array();
