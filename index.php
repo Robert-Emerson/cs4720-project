@@ -123,7 +123,7 @@ function insert_game($pictures, $lat, $lon) {
 			$stmt->bind_param("issss", $gameID, $id, $pictureLat, $pictureLon, $url);
 			$stmt->execute();
 		}
-		$retval[] = array($url, $pictureLat, $pictureLon);
+		$retval[] = array('url' => $url, 'lat' => $pictureLat, 'lon' => $pictureLon);
     }
 
 	# once we insert the pictures, we insert a game into the games table
