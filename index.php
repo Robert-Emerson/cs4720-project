@@ -46,6 +46,7 @@ function get_pictures($lat, $lon) {
         'lon'           => $lon,
         'format'        => 'json',
 	'sort'		=> 'date-posted-desc',
+	'per_page'	=> '500',
 	'radius'	=> '1',
         'nojsoncallback'=> '1'
     );
@@ -92,6 +93,8 @@ function get_pictures($lat, $lon) {
 
 function insert_game($pictures, $lat, $lon) {
 
+	$retval = array();
+
 	$db_connection = new mysqli('stardock.cs.virginia.edu', 'cs4720roe2pj', 'spring2014', 'cs4720roe2pj');
 	if (mysqli_connect_errno()) {
 		echo "error connecting to database";
@@ -104,7 +107,7 @@ function insert_game($pictures, $lat, $lon) {
 	}
 	
 	$gameID = $gameID + 1;
-	echo "$gameID <br>";	
+		
     foreach ($pictures as $key => $value) {
 		$id = $value['id'];
 		$pictureLat = $value['location']['lat'];
@@ -120,6 +123,7 @@ function insert_game($pictures, $lat, $lon) {
 			$stmt->bind_param("issss", $gameID, $id, $pictureLat, $pictureLon, $url);
 			$stmt->execute();
 		}
+		$retval[] = array($url, $pictureLat, $pictureLon);
     }
 
 	# once we insert the pictures, we insert a game into the games table
@@ -132,8 +136,8 @@ function insert_game($pictures, $lat, $lon) {
 	if($stmt->prepare("insert into games (`gameID`, `lat`, `lon`) values (?, ?, ?)")) {
 		$stmt->bind_param("iss", $gameID, $lat, $lon);
 		$stmt->execute();
-	}	
-
+	}
+	return $retval;
 }
 
 function new_game($lat, $lon) {
@@ -143,20 +147,19 @@ function new_game($lat, $lon) {
 
     # now we've got our pictures, so let's put them in the database
     # this should probably return the data that we added, in some manner our client will use
-    insert_game($pictures, $lat, $lon);
+    echo json_encode(insert_game($pictures, $lat, $lon));
 }
 
 Flight::route('/new_game/@lat/@lon', function($lat, $lon) {
     new_game($lat, $lon);
 });
 
-Flight::route('/users/@id', function($id) {
-	echo "You have logged in as $id";
+Flight::route('/users/@id', function() {
+	
 });
 
-Flight::route('/', function(){
-    echo 'hello world!';
+Flight::route('/', function() {
+	echo "photo-enteering";
 });
 
 Flight::start();
-?>
