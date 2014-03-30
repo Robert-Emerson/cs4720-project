@@ -120,7 +120,7 @@ function insert_game($pictures, $lat, $lon) {
 		}
 		$stmt = $db_connection->stmt_init();
 		if($stmt->prepare("insert into pictures (`gameID`, `photoID`, `lat`, `lon`, `url`) values (?, ?, ?, ?, ?)")) {
-			$stmt->bind_param("issss", $gameID, $id, $pictureLat, $pictureLon, $url);
+			$stmt->bind_param("isdds", $gameID, $id, $pictureLat, $pictureLon, $url);
 			$stmt->execute();
 		}
 		$retval[] = array('url' => $url, 'lat' => $pictureLat, 'lon' => $pictureLon);
@@ -134,7 +134,7 @@ function insert_game($pictures, $lat, $lon) {
 	}
 	$stmt = $db_connection->stmt_init();
 	if($stmt->prepare("insert into games (`gameID`, `lat`, `lon`) values (?, ?, ?)")) {
-		$stmt->bind_param("iss", $gameID, $lat, $lon);
+		$stmt->bind_param("idd", $gameID, $lat, $lon);
 		$stmt->execute();
 	}
 	return $retval;
@@ -150,8 +150,32 @@ function new_game($lat, $lon) {
     echo json_encode(insert_game($pictures, $lat, $lon));
 }
 
+function join_game($gameID) {
+
+	$retval = array();
+
+	$db_connection = new mysqli('stardock.cs.virginia.edu', 'cs4720roe2pj', 'spring2014', 'cs4720roe2pj');
+	if (mysqli_connect_errno()) {
+		echo "error connecting to database";
+	}
+	$stmt = $db_connection->stmt_init();
+	if($stmt->prepare("select url, lat, lon from pictures where gameID = ?")) {
+		$stmt->bind_param('s', $gameID);
+		$stmt->execute();
+		$stmt->bind_result( $url, $lat, $lon);
+		while($stmt->fetch()) {
+		    $retval[] = array('url' => $url, 'lat' => $lat, 'lon' => $lon);
+		}
+	}
+	echo json_encode($retval);
+}
+
 Flight::route('/new_game/@lat/@lon', function($lat, $lon) {
     new_game($lat, $lon);
+});
+
+Flight::route('/join_game/@id', function($id) {
+    join_game($id);
 });
 
 Flight::route('/users/@id', function() {
