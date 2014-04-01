@@ -150,14 +150,21 @@ function new_game($lat, $lon) {
     echo json_encode(insert_game($pictures, $lat, $lon));
 }
 
-function join_game($gameID) {
+function join_game($gameID, $userID) {
 
 	$retval = array();
 
+	
 	$db_connection = new mysqli('stardock.cs.virginia.edu', 'cs4720roe2pj', 'spring2014', 'cs4720roe2pj');
 	if (mysqli_connect_errno()) {
 		echo "error connecting to database";
 	}
+	$stmt = $db_connection->stmt_init();
+	if($stmt->prepare("INSERT INTO usersInGame (`username`, `gameID`) VALUES (?,?)")) {
+		$stmt->bind_param('ss', $userID, $gameID);
+		$stmt->execute();
+	}
+	
 	$stmt = $db_connection->stmt_init();
 	if($stmt->prepare("select url, lat, lon from pictures where gameID = ?")) {
 		$stmt->bind_param('s', $gameID);
@@ -174,8 +181,8 @@ Flight::route('/new_game/@lat/@lon', function($lat, $lon) {
     new_game($lat, $lon);
 });
 
-Flight::route('/join_game/@id', function($id) {
-    join_game($id);
+Flight::route('/join_game/@id/@user', function($id, $user) {
+    join_game($id, $user);
 });
 
 Flight::route('/users/@id', function() {
