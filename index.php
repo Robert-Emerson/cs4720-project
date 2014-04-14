@@ -75,8 +75,8 @@ function get_pictures($lat, $lon) {
 
     # Choose 10 locations from everything flickr returned
     # Fails if flickr call didn't work
-    if ($pictures['stat'] == 'fail') {
-        echo 'well, that failed';
+    if ($pictures['stat'] == 'fail' || $pictures['photos']['total'] < 10) {
+        #We don't do anything here
     } else {
         foreach (range(0, 9) as $number) { //choosing 10 pictures now.
             $rand = rand(0, count($picture_list)-1);
@@ -85,13 +85,14 @@ function get_pictures($lat, $lon) {
             $picture_list[$rand]['location'] = get_location($picture_list[$rand]['id']);
 	    # adds the randomly selected image to our array of chosen images
             $chosenPictures[] = $picture_list[$rand];
-	}
+		}
     }
 
     return $chosenPictures;
 }
 
-function insert_game($pictures, $lat, $lon) {
+function insert_game($pictures, $lat, $lon, $user) {
+
 
 	$retval = array();
 
@@ -133,21 +134,33 @@ function insert_game($pictures, $lat, $lon) {
 		echo "error connecting to database";
 	}
 	$stmt = $db_connection->stmt_init();
-	if($stmt->prepare("insert into games (`gameID`, `lat`, `lon`) values (?, ?, ?)")) {
+	if (!is_null($user)) {
+
+		if($stmt->prepare("insert into games (`gameID`, `lat`, `lon`) values (?, ?, ?)")) {
+			$stmt->bind_param("idd", $gameID, $lat, $lon);
+			$stmt->execute();
+		}
+		if($stmt->prepare("insert into usersInGame (`gameID`, `username`) values (?, ?)")) {
+			$stmt->bind_param("is", $gameID, $user);
+			$stmt->execute();
+		}
+	} else {
+		if($stmt->prepare("insert into games (`gameID`, `lat`, `lon`) values (?, ?, ?)")) {
 		$stmt->bind_param("idd", $gameID, $lat, $lon);
 		$stmt->execute();
+		}
 	}
 	return $retval;
 }
 
-function new_game($lat, $lon) {
+function new_game($lat, $lon, $user) {
 
     # First get the pictures we're using for locations
     $pictures = get_pictures($lat, $lon);
 
     # now we've got our pictures, so let's put them in the database
     # this should probably return the data that we added, in some manner our client will use
-    echo json_encode(insert_game($pictures, $lat, $lon));
+    echo json_encode(insert_game($pictures, $lat, $lon, $user));
 }
 
 function join_game($gameID, $userID) {
@@ -166,7 +179,7 @@ function join_game($gameID, $userID) {
 	}
 	
 	$stmt = $db_connection->stmt_init();
-	if($stmt->prepare("select url, lat, lon from pictures where gameID = ?")) {
+	if($stmt->prepare("SELECT url, lat, lon FROM pictures WHERE gameID = ?")) {
 		$stmt->bind_param('s', $gameID);
 		$stmt->execute();
 		$stmt->bind_result( $url, $lat, $lon);
@@ -177,16 +190,78 @@ function join_game($gameID, $userID) {
 	echo json_encode($retval);
 }
 
-Flight::route('/new_game/@lat/@lon', function($lat, $lon) {
-    new_game($lat, $lon);
+function get_scores($gameID) {
+	$retval = array();
+
+	$db_connection = new mysqli('stardock.cs.virginia.edu', 'cs4720roe2pj', 'spring2014', 'cs4720roe2pj');
+	if (mysqli_connect_errno()) {
+		echo "error connecting to database";
+	}
+	$stmt = $db_connection->stmt_init();
+	if($stmt->prepare("SELECT `username`,`score` FROM `usersInGame` WHERE gameID = ?")) {
+		$stmt->bind_param('i', $gameID);
+		$stmt->execute();
+		$stmt->bind_result( $username, $score);
+
+		while($stmt->fetch()) {
+		    $retval[] = array('username' => $username, 'score' => $score);
+		}
+	}
+
+	echo json_encode($retval);
+
+}
+
+function someone_won($gameID, $user) {
+	$db_connection = new mysqli('stardock.cs.virginia.edu', 'cs4720roe2pj', 'spring2014', 'cs4720roe2pj');
+	if (mysqli_connect_errno()) {
+		echo "error connecting to database";
+	}
+	$stmt = $db_connection->stmt_init();
+	if($stmt->prepare("UPDATE `games` SET `winner`= ? WHERE `gameID` = ?")) {
+		$stmt->bind_param('si', $user, $gameID);
+		$stmt->execute();
+		
+	}
+}
+
+function update_score($gameID, $user, $score) {
+	$db_connection = new mysqli('stardock.cs.virginia.edu', 'cs4720roe2pj', 'spring2014', 'cs4720roe2pj');
+	if (mysqli_connect_errno()) {
+		echo "error connecting to database";
+	}
+	$stmt = $db_connection->stmt_init();
+	if($stmt->prepare("UPDATE `usersInGame` SET `score`= ? WHERE `username` = ? AND `gameID` = ?")) {
+		$stmt->bind_param('isi', $score, $user, $gameID);
+		$stmt->execute();
+		if ($stmt->errno) {
+			echo '{"status":"'.$stmt->error.'"}';
+		} else {
+			echo '{"status":"OK"}';
+		}
+	}
+
+}
+
+Flight::route('/new_game/@lat/@lon(/@user)', function($lat, $lon, $user) {
+    new_game($lat, $lon, $user);
 });
 
 Flight::route('/join_game/@id/@user', function($id, $user) {
     join_game($id, $user);
 });
 
-Flight::route('/users/@id', function() {
+Flight::route('/get_scores/@gameID', function($gameID) {
+	get_scores($gameID);
+});
+
+Flight::route('/winning/@gameID/@user', function($gameID, $user) {
+	someone_won($gameID, $user);
 	
+});
+
+Flight::route('/update_score/@gameID/@user/@score', function($gameID, $user, $score) {
+	update_score($gameID, $user, $score);
 });
 
 Flight::route('/', function() {
