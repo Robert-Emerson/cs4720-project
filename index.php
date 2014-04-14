@@ -243,6 +243,25 @@ function update_score($gameID, $user, $score) {
 
 }
 
+function get_recent_game($user) {
+	
+	$db_connection = new mysqli('stardock.cs.virginia.edu', 'cs4720roe2pj', 'spring2014', 'cs4720roe2pj');
+	if (mysqli_connect_errno()) {
+		echo "error connecting to database";
+	}
+	$stmt = $db_connection->stmt_init();
+	if($stmt->prepare("SELECT gameID from usersInGame NATURAL JOIN games WHERE username = ? ORDER BY gameID DESC LIMIT 1")) {
+		$stmt->bind_param('s', $user);
+		$stmt->execute();
+		$stmt->bind_result( $gameID);
+
+		while($stmt->fetch()) {
+		    echo '{"gameID":'.$gameID.'}';
+		}
+
+	}
+}
+
 Flight::route('/new_game/@lat/@lon(/@user)', function($lat, $lon, $user) {
     new_game($lat, $lon, $user);
 });
@@ -262,6 +281,10 @@ Flight::route('/winning/@gameID/@user', function($gameID, $user) {
 
 Flight::route('/update_score/@gameID/@user/@score', function($gameID, $user, $score) {
 	update_score($gameID, $user, $score);
+});
+
+Flight::route('/get_recent_game/@user', function ($user) {
+	get_recent_game($user);
 });
 
 Flight::route('/', function() {
